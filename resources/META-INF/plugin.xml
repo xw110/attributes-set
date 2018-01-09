@@ -1,16 +1,19 @@
 <idea-plugin>
-  <id>com.your.company.unique.plugin.id</id>
+  <id>com.wangw.top.setAttributes</id>
   <name>Plugin display name here</name>
-  <version>1.0</version>
-  <vendor email="support@yourcompany.com" url="http://www.yourcompany.com">YourCompany</vendor>
+  <version>1.1</version>
+  <vendor email="1220936030@qq.com" url="https://github.com/xw110/attributes-set">attributes-set</vendor>
 
   <description><![CDATA[
       自动生成实例对象设置属性的样板代码
     ]]></description>
 
   <change-notes><![CDATA[
-      Add change notes here.<br>
-      <em>most HTML tags may be used</em>
+      1.修复在模型自身类中不能使用的bug.
+      2.修复声明实例不规范不能使用的bug.
+      3.修复使用*导入包不能使用的bug.
+      4.删除了方法的按名称排序
+      5.修改快捷键为alt + S
     ]]>
   </change-notes>
 
@@ -29,9 +32,9 @@
 
   <actions>
     <!-- Add your actions here -->
-    <action id="myplugin" class="com.wangw.top.SetAttributesAction" text="attributesSet" description="设置属性">
+    <action id="SetAttributesAction" class="com.wangw.top.SetAttributesAction" text="attributesSet" description="设置属性">
       <add-to-group group-id="GenerateGroup" anchor="last"/>
-      <keyboard-shortcut keymap="$default" first-keystroke="alt A"/>
+      <keyboard-shortcut keymap="$default" first-keystroke="alt S"/>
     </action>
   </actions>
 

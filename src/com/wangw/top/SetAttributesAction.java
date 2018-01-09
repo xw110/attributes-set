@@ -16,7 +16,6 @@ import com.intellij.psi.search.GlobalSearchScope;
 import org.apache.commons.lang.StringUtils;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -58,14 +57,19 @@ public class SetAttributesAction extends AnAction {
         if (strings == null) {
             return;
         }
-        //获取全类名
-        String className = getFullClassName(document.getText(), strings[0]);
+
+        //获取实例类型的class对象
+        PsiClass psiClass = getPsiClass(document.getText(), strings[0], project);
+        if (psiClass == null) {
+            return;
+        }
 
         //获取所有set方法名称
-        List<String> nameList = getAllMethodNameOfSet(className, project);
+        List<String> nameList = getAllMethodNameOfSet(psiClass);
         if (nameList.isEmpty()) {
             return;
         }
+
         //生成设置属性的代码
         String codeStr = buildCodeStr(nameList, count, strings[1]);
         Runnable runnable = new Runnable() {
@@ -79,13 +83,11 @@ public class SetAttributesAction extends AnAction {
     }
 
     /**
-     * 获取指定类的所有set方法(已排序)
-     * @param className
-     * @param project
+     * 获取指定类的所有set方法
+     * @param psiClass
      * @return
      */
-    private List<String> getAllMethodNameOfSet(String className, Project project) {
-        PsiClass psiClass = JavaPsiFacade.getInstance(project).findClass(className, GlobalSearchScope.allScope(project));
+    private List<String> getAllMethodNameOfSet(PsiClass psiClass) {
         PsiMethod[] methods = psiClass.getAllMethods();
         List<String> list = new ArrayList<>();
         for (PsiMethod method : methods) {
@@ -93,7 +95,6 @@ public class SetAttributesAction extends AnAction {
                 list.add(method.getName());
             }
         }
-        Collections.sort(list);
         return list;
     }
 
@@ -125,7 +126,7 @@ public class SetAttributesAction extends AnAction {
      * @return
      */
     private String getPackageName(String text) {
-        Pattern pattern = Pattern.compile("package ([a-z\\\\.]+);");
+        Pattern pattern = Pattern.compile("package ((\\w|\\.)+)");
         Matcher matcher = pattern.matcher(text);
         while (matcher.find()) {
             return matcher.group(1);
@@ -139,7 +140,11 @@ public class SetAttributesAction extends AnAction {
      * @return
      */
     private String[] getClassNameAndInstanceName(String lineText) {
-        String[] strings = lineText.split("\\s+");
+        String[] strings = lineText.split("=");
+        if (strings.length < 2) {
+            return null;
+        }
+        strings = strings[0].split("\\s+");
         List<String> list = new ArrayList<>();
         for (String s : strings) {
             if (!s.trim().equals("")) {
@@ -160,18 +165,68 @@ public class SetAttributesAction extends AnAction {
      * @return
      */
     private String getFullClassName(String text, String className) {
-        Pattern pattern = Pattern.compile("import ([a-z\\\\.]+" + className + ");");
+        //如果包含"." 说明为全路径名，直接返回
+        if (className.contains(".")) {
+            return className;
+        }
+        Pattern pattern = Pattern.compile("import ((\\w|\\.)+" + className + ");");
         Matcher matcher = pattern.matcher(text);
         String fullClassName = "";
         while (matcher.find()) {
             fullClassName =  matcher.group(1);
-            break;
+            if (StringUtils.isNotBlank(fullClassName)) {
+                return fullClassName;
+            }
         }
-        if (fullClassName.equals("")) {
+        if ("".equals(fullClassName)) {
             return getPackageName(text) + "." + className;
         } else {
-            return fullClassName;
+            return null;
         }
+    }
+
+    /**
+     * 获取所有使用"*" 导入的包名称
+     * @param text
+     * @return
+     */
+    private List<String> getAllImportPackageNameOfStar(String text) {
+        Pattern pattern = Pattern.compile("import ((\\w|\\.)+\\*)");
+        Matcher matcher = pattern.matcher(text);
+        List<String> packageList = new ArrayList<>();
+        while (matcher.find()) {
+            String packageName =  matcher.group(1);
+            if (StringUtils.isNotBlank(packageName)) {
+                packageList.add(packageName.substring(0, packageName.length() - 2));
+            }
+        }
+        return packageList;
+    }
+
+    /**
+     * 获取指定类的class
+     * @param text
+     * @param className
+     * @param project
+     * @return
+     */
+    private PsiClass getPsiClass(String text, String className, Project project) {
+        //获取全类名(自带包名-->不同包中-->同一包中-->默认包中)
+        String fullClassName = getFullClassName(text, className);
+        PsiClass psiClass = JavaPsiFacade.getInstance(project).findClass(fullClassName, GlobalSearchScope.allScope(project));
+        if (psiClass != null) {
+            return psiClass;
+        }
+
+        //如果以上方式获取不到class对象，则按使用"*"导入的方式
+        List<String> packageList = getAllImportPackageNameOfStar(text);
+        for (String s : packageList) {
+            psiClass = JavaPsiFacade.getInstance(project).findClass(s + "." + className, GlobalSearchScope.allScope(project));
+            if (psiClass != null) {
+                return psiClass;
+            }
+        }
+        return null;
     }
 
     /**
@@ -191,5 +246,4 @@ public class SetAttributesAction extends AnAction {
         }
         return null;
     }
-
 }
