@@ -1,6 +1,6 @@
 <idea-plugin>
   <id>com.wangw.top.setAttributes</id>
-  <name>Plugin display name here</name>
+  <name>attributes-set</name>
   <version>1.1</version>
   <vendor email="1220936030@qq.com" url="https://github.com/xw110/attributes-set">attributes-set</vendor>
 
